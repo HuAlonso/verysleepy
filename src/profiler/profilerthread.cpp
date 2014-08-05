@@ -321,10 +321,9 @@ void ProfilerThread::run()
 				return;
 			}
 		}
-
-		numThreadsRunning = 0;
 	}
 
+	numThreadsRunning = 0;
 	status = L"Exiting";
 
 	if (cancelled)

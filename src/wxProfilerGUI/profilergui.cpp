@@ -59,6 +59,7 @@ static const wxCmdLineEntryDesc g_cmdLineDesc[] =
 	{ wxCMD_LINE_OPTION, "i", "", "Loads an existing profile from a file.",					wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL|wxCMD_LINE_NEEDS_SEPARATOR },
 	{ wxCMD_LINE_OPTION, "o", "", "Saves the captured profile to the given file.",			wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL|wxCMD_LINE_NEEDS_SEPARATOR },
 	{ wxCMD_LINE_OPTION, "t", "", "Stops capturing automatically after N seconds time.",	wxCMD_LINE_VAL_NUMBER, wxCMD_LINE_PARAM_OPTIONAL },
+    { wxCMD_LINE_OPTION, "d", "", "Start gathering threads and profile after delay N seconds",    wxCMD_LINE_VAL_NUMBER, wxCMD_LINE_PARAM_OPTIONAL },
 	{ wxCMD_LINE_SWITCH, "q", "", "Quiet mode (no error messages will be shown).",			wxCMD_LINE_VAL_NONE },
 	{ wxCMD_LINE_PARAM, NULL, NULL, "Loads an existing profile from a file.",				wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL},
 
@@ -68,6 +69,7 @@ static const wxCmdLineEntryDesc g_cmdLineDesc[] =
 wxIcon sleepy_icon;
 std::wstring cmdline_load, cmdline_save, cmdline_run;
 long cmdline_timeout = -1;  // -1 means profile until cancelled
+long cmdline_delay = 1;
 std::vector<std::wstring> tmp_files;
 Prefs prefs;
 wxConfig config(_T(APPNAME) L" " _T(VERSION), _T(VENDOR));
@@ -243,8 +245,8 @@ std::wstring ProfilerGUI::LaunchProfiler(const AttachInfo *info)
 	delete profilerthread;
 	profilerthread = NULL;
 
-	if (failed)
-		return std::wstring();
+	//if (failed)
+	//	return std::wstring();
 
 	enforce(!output_filename.empty(), "There was a problem creating the profile data.");
 
@@ -423,7 +425,7 @@ void ProfilerGUI::HandleInit()
 	{
 		wxLogError("%ls\n", e.wwhat());
 	}
-	wxEventLoop::GetActive()->Exit(1);
+	wxEventLoop::GetActive()->Exit(0);
 }
 
 /// Returns true if a frame is still active.
@@ -441,6 +443,26 @@ bool ProfilerGUI::Run()
 	{
 		std::unique_ptr<AttachInfo> info(RunProcess(cmdline_run, L""));
 		wxScopeGuard sgTerm = wxMakeGuard(TerminateProcess, info->process_handle, 0);
+
+		if(cmdline_delay)
+        {
+            Sleep( cmdline_delay * 1000);//in milliseconds.
+        }
+        std::vector<ProcessInfo> processList;
+        ProcessInfo::enumProcesses(processList);
+
+        for(unsigned int i=0; i<processList.size(); ++i)
+        {
+            if(processList[i].getID() == GetProcessId(info->process_handle))
+            {
+                info->thread_handles.clear();
+                for(unsigned int j=0; j<processList[i].threads.size(); ++j)
+                {
+                    info->thread_handles.push_back(processList[i].threads[j].getThreadHandle());
+                }
+            }
+        }
+
 		filename = LaunchProfiler(info.get());
 	}
 	else
@@ -503,6 +525,8 @@ bool ProfilerGUI::OnCmdLineParsed(wxCmdLineParser& parser)
 		cmdline_save = param.c_str();
 	if (!parser.Found("t", &cmdline_timeout))
 		cmdline_timeout = -1;
+    if (!parser.Found("d", &cmdline_delay))
+		cmdline_delay = 1;
 	if (parser.Found("r", &param))
 		cmdline_run = param.c_str();
 
