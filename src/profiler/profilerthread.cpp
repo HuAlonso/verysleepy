@@ -317,7 +317,7 @@ void ProfilerThread::run()
 			const Profiler& profiler(*it);
 			if (!profiler.targetExited())
 			{
-				error(L"ProfilerExcep: " + e.what());
+				error(L" ProfilerExcep: " + e.what());
 				return;
 			}
 		}
@@ -347,7 +347,9 @@ void ProfilerThread::error(const std::wstring& what)
 	failed = true;
 	std::cerr << "ProfilerThread Error: " << what << std::endl;
 
-	::MessageBox(NULL, std::wstring(L"Error: " + what).c_str(), L"Profiler Error", MB_OK);
+    //Message box will block the execution of the automatic test. So temporarily comment it out.
+    //Add it back when needed.
+	//::MessageBox(NULL, std::wstring(L"Error: " + what).c_str(), L"Profiler Error", MB_OK);
 }
 
 void ProfilerThread::beginProgress(std::wstring stage, int total)
